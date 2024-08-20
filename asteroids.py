@@ -13,10 +13,11 @@ pygame.display.set_caption('Asteroids AI')
 
 # Set up the font for the score counter
 font = pygame.font.Font(None, 36)
+game_over_font = pygame.font.Font(None, 72)
 
-# clock to regulate the game loop
+# Set up the clock to regulate the game loop
 clock = pygame.time.Clock()
-FPS = 120  # Set frames per second (TPS)
+FPS = 60  # Set the frames per second (TPS)
 
 # Spaceship class
 class Spaceship:
@@ -29,7 +30,7 @@ class Spaceship:
         self.speed_x = 0
         self.speed_y = 0
         self.rotation_speed = 3  #Rotation speed
-        self.acceleration = 0.6  #Acceleration for more noticeable movement
+        self.acceleration = 0.6  #Acceleration for movement
         self.max_speed = 5  #Max speed
         self.friction = 0.99  # Friction to control speed
 
@@ -73,9 +74,6 @@ class Spaceship:
             self.rect.bottom = 0
         elif self.rect.bottom < 0:
             self.rect.top = screen_height
-
-        # Output position to terminal
-        print(f"Spaceship Position: ({self.rect.x}, {self.rect.y}), Angle: {self.angle}")
 
     def draw(self, screen, offset_x, offset_y):
         # Draw the spaceship adjusted by the viewport offset
@@ -170,6 +168,16 @@ def draw_background(screen, grid_size=50):
     for y in range(0, screen_height, grid_size):
         pygame.draw.line(screen, (255, 255, 255), (0, y), (screen_width, y))
 
+# Function to display a countdown before respawn
+def display_countdown(screen, countdown):
+    countdown_text = font.render(f"Respawning in {countdown}...", True, (255, 255, 255))
+    screen.blit(countdown_text, (screen.get_width() // 2 - countdown_text.get_width() // 2, screen.get_height() // 2))
+
+# Function to display Game Over
+def display_game_over(screen):
+    game_over_text = game_over_font.render("Game Over", True, (255, 0, 0))
+    screen.blit(game_over_text, (screen.get_width() // 2 - game_over_text.get_width() // 2, screen.get_height() // 2))
+
 # Create the spaceship instance
 spaceship = Spaceship(screen_width // 2, screen_height // 2)
 
@@ -182,9 +190,17 @@ bullets = []
 # Initialize the score
 score = 0
 
+# Initialize player lives
+lives = 3
+
 # Bullet cooldown timer
 last_shot_time = 0
-cooldown_time = 100  # Milliseconds between shots
+cooldown_time = 500  # Milliseconds between shots
+
+# Respawn timer
+respawn_time = 3000  # 3 seconds
+respawning = False
+respawn_start_time = 0
 
 # Main game loop
 running = True
@@ -196,23 +212,24 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
-        spaceship.rotate("left")
-    if keys[pygame.K_RIGHT]:
-        spaceship.rotate("right")
-    if keys[pygame.K_UP]:
-        spaceship.accelerate()
-    if keys[pygame.K_SPACE]:
-        current_time = pygame.time.get_ticks()
-        if current_time - last_shot_time > cooldown_time:
-            # Shoot a bullet out of the front of the spaceship
-            bullet = Bullet(spaceship.rect.centerx, spaceship.rect.centery, spaceship.angle)
-            bullets.append(bullet)
-            last_shot_time = current_time
+    if not respawning:
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LEFT]:
+            spaceship.rotate("left")
+        if keys[pygame.K_RIGHT]:
+            spaceship.rotate("right")
+        if keys[pygame.K_UP]:
+            spaceship.accelerate()
+        if keys[pygame.K_SPACE]:
+            current_time = pygame.time.get_ticks()
+            if current_time - last_shot_time > cooldown_time:
+                # Shoot a bullet out of the front of the spaceship
+                bullet = Bullet(spaceship.rect.centerx, spaceship.rect.centery, spaceship.angle)
+                bullets.append(bullet)
+                last_shot_time = current_time
 
-    # Update spaceship position
-    spaceship.update()
+        # Update spaceship position
+        spaceship.update()
 
     # Update bullet positions
     for bullet in bullets:
@@ -233,46 +250,69 @@ while running:
     draw_background(screen)
 
     # Draw the spaceship, asteroids, and bullets with offset
-    spaceship.draw(screen, offset_x, offset_y)
+    if not respawning:
+        spaceship.draw(screen, offset_x, offset_y)
     for asteroid in asteroids:
         asteroid.draw(screen, offset_x, offset_y)
     for bullet in bullets:
         bullet.draw(screen, offset_x, offset_y)
 
-    # Check for collisions using masks for pixel-perfect detection
-    spaceship_mask = spaceship.get_mask()
+    if not respawning:
+        # Check for collisions using masks for pixel-perfect detection
+        spaceship_mask = spaceship.get_mask()
 
-    for asteroid in asteroids[:]:
-        asteroid_mask = asteroid.get_mask()
-        offset = (asteroid.rect.left - spaceship.rect.left, asteroid.rect.top - spaceship.rect.top)
-        collision_point = spaceship_mask.overlap(asteroid_mask, offset)
+        for asteroid in asteroids[:]:
+            asteroid_mask = asteroid.get_mask()
+            offset = (asteroid.rect.left - spaceship.rect.left, asteroid.rect.top - spaceship.rect.top)
+            collision_point = spaceship_mask.overlap(asteroid_mask, offset)
 
-        if collision_point:
-            print("Collision detected at:", collision_point)
-            running = False  # End the game on collision
+            if collision_point:
+                print("Collision detected at:", collision_point)
+                lives -= 1  # Decrease lives on collision
+                if lives > 0:
+                    respawning = True
+                    respawn_start_time = pygame.time.get_ticks()
+                else:
+                    running = False  # End the game if no lives are left
 
-        # Check for bullet-asteroid collisions
-        for bullet in bullets[:]:
-            bullet_mask = bullet.get_mask()
-            bullet_offset = (asteroid.rect.left - bullet.rect.left, asteroid.rect.top - bullet.rect.top)
-            bullet_collision = bullet_mask.overlap(asteroid_mask, bullet_offset)
+            # Check for bullet-asteroid collisions
+            for bullet in bullets[:]:
+                bullet_mask = bullet.get_mask()
+                bullet_offset = (asteroid.rect.left - bullet.rect.left, asteroid.rect.top - bullet.rect.top)
+                bullet_collision = bullet_mask.overlap(asteroid_mask, bullet_offset)
 
-            if bullet_collision:
-                print("Bullet hit an asteroid!")
-                bullets.remove(bullet)
-                asteroids.remove(asteroid)
-                new_asteroids = asteroid.break_apart()
-                asteroids.extend(new_asteroids)
-                if asteroid.tier == 1:
-                    score += 1  # Increase score when a tier 1 asteroid is destroyed
-                break
+                if bullet_collision:
+                    print("Bullet hit an asteroid!")
+                    bullets.remove(bullet)
+                    asteroids.remove(asteroid)
+                    new_asteroids = asteroid.break_apart()
+                    asteroids.extend(new_asteroids)
+                    if asteroid.tier == 1:
+                        score += 1  # Increase score when a tier 1 asteroid is destroyed
+                    break
 
-    # Draw the score counter
+    # Respawn logic
+    if respawning:
+        current_time = pygame.time.get_ticks()
+        countdown = 3 - (current_time - respawn_start_time) // 1000
+        display_countdown(screen, countdown)
+        if current_time - respawn_start_time >= respawn_time:
+            respawning = False
+            spaceship = Spaceship(screen_width // 2, screen_height // 2)
+
+    # Draw the score counter and lives
     score_text = font.render(f"Score: {score}", True, (255, 255, 255))
+    lives_text = font.render(f"Lives: {lives}", True, (255, 255, 255))
     screen.blit(score_text, (10, 10))
+    screen.blit(lives_text, (10, 40))
 
     # Update the display
     pygame.display.flip()
+
+# Game over screen
+display_game_over(screen)
+pygame.display.flip()
+pygame.time.wait(3000)  # Display Game Over for 3 seconds before quitting
 
 pygame.quit()
 sys.exit()
