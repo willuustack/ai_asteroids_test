@@ -1,0 +1,300 @@
+<html>
+<head>
+<title>asteroids.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #7a7e85;}
+.s3 { color: #bcbec4;}
+.s4 { color: #2aacb8;}
+.s5 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+asteroids.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">pygame</span>
+<span class="s0">import </span><span class="s1">sys</span>
+<span class="s0">import </span><span class="s1">random</span>
+<span class="s0">import </span><span class="s1">math</span>
+
+<span class="s2"># Initialize Pygame</span>
+<span class="s1">pygame</span><span class="s3">.</span><span class="s1">init</span><span class="s3">()</span>
+
+<span class="s2"># Set up the game window (very large map)</span>
+<span class="s1">screen_width</span><span class="s3">, </span><span class="s1">screen_height </span><span class="s3">= </span><span class="s4">5000</span><span class="s3">, </span><span class="s4">4000  </span><span class="s2"># Significantly larger playing area</span>
+<span class="s1">screen </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">display</span><span class="s3">.</span><span class="s1">set_mode</span><span class="s3">((</span><span class="s4">1200</span><span class="s3">, </span><span class="s4">900</span><span class="s3">))  </span><span class="s2"># Viewport size</span>
+<span class="s1">pygame</span><span class="s3">.</span><span class="s1">display</span><span class="s3">.</span><span class="s1">set_caption</span><span class="s3">(</span><span class="s5">'Asteroids AI'</span><span class="s3">)</span>
+
+<span class="s2"># Set up the font for the score counter</span>
+<span class="s1">font </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">font</span><span class="s3">.</span><span class="s1">Font</span><span class="s3">(</span><span class="s0">None</span><span class="s3">, </span><span class="s4">36</span><span class="s3">)</span>
+
+<span class="s2"># clock to regulate the game loop</span>
+<span class="s1">clock </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">time</span><span class="s3">.</span><span class="s1">Clock</span><span class="s3">()</span>
+<span class="s1">FPS </span><span class="s3">= </span><span class="s4">120  </span><span class="s2"># Set frames per second (TPS)</span>
+
+<span class="s2"># Spaceship class</span>
+<span class="s0">class </span><span class="s1">Spaceship</span><span class="s3">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">):</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">original_image </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">Surface</span><span class="s3">((</span><span class="s4">20</span><span class="s3">, </span><span class="s4">20</span><span class="s3">), </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">SRCALPHA</span><span class="s3">)  </span><span class="s2"># Smaller spaceship with alpha transparency</span>
+        <span class="s1">pygame</span><span class="s3">.</span><span class="s1">draw</span><span class="s3">.</span><span class="s1">polygon</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">original_image</span><span class="s3">, (</span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">), [(</span><span class="s4">10</span><span class="s3">, </span><span class="s4">0</span><span class="s3">), (</span><span class="s4">0</span><span class="s3">, </span><span class="s4">20</span><span class="s3">), (</span><span class="s4">20</span><span class="s3">, </span><span class="s4">20</span><span class="s3">)])  </span><span class="s2"># Draw a triangle</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">image </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">original_image</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">.</span><span class="s1">get_rect</span><span class="s3">(</span><span class="s1">center</span><span class="s3">=(</span><span class="s1">x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">))</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">angle </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rotation_speed </span><span class="s3">= </span><span class="s4">3  </span><span class="s2">#Rotation speed</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">acceleration </span><span class="s3">= </span><span class="s4">0.6  </span><span class="s2">#Acceleration for more noticeable movement</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">max_speed </span><span class="s3">= </span><span class="s4">5  </span><span class="s2">#Max speed</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">friction </span><span class="s3">= </span><span class="s4">0.99  </span><span class="s2"># Friction to control speed</span>
+
+    <span class="s0">def </span><span class="s1">rotate</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">direction</span><span class="s3">):</span>
+        <span class="s0">if </span><span class="s1">direction </span><span class="s3">== </span><span class="s5">&quot;left&quot;</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">angle </span><span class="s3">-= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rotation_speed</span>
+        <span class="s0">elif </span><span class="s1">direction </span><span class="s3">== </span><span class="s5">&quot;right&quot;</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">angle </span><span class="s3">+= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rotation_speed</span>
+
+        <span class="s2"># Rotate the image and update the rect</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">image </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">transform</span><span class="s3">.</span><span class="s1">rotate</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">original_image</span><span class="s3">, -</span><span class="s1">self</span><span class="s3">.</span><span class="s1">angle</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">.</span><span class="s1">get_rect</span><span class="s3">(</span><span class="s1">center</span><span class="s3">=</span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">center</span><span class="s3">)</span>
+
+    <span class="s0">def </span><span class="s1">accelerate</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s2"># Accelerate in the direction the spaceship is facing</span>
+        <span class="s1">radians </span><span class="s3">= </span><span class="s1">math</span><span class="s3">.</span><span class="s1">radians</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">angle</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x </span><span class="s3">+= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">acceleration </span><span class="s3">* </span><span class="s1">math</span><span class="s3">.</span><span class="s1">sin</span><span class="s3">(</span><span class="s1">radians</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y </span><span class="s3">-= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">acceleration </span><span class="s3">* </span><span class="s1">math</span><span class="s3">.</span><span class="s1">cos</span><span class="s3">(</span><span class="s1">radians</span><span class="s3">)</span>
+
+        <span class="s2"># Clamp speed to max speed</span>
+        <span class="s1">speed </span><span class="s3">= </span><span class="s1">math</span><span class="s3">.</span><span class="s1">sqrt</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x </span><span class="s3">** </span><span class="s4">2 </span><span class="s3">+ </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y </span><span class="s3">** </span><span class="s4">2</span><span class="s3">)</span>
+        <span class="s0">if </span><span class="s1">speed </span><span class="s3">&gt; </span><span class="s1">self</span><span class="s3">.</span><span class="s1">max_speed</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">max_speed </span><span class="s3">* </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x </span><span class="s3">/ </span><span class="s1">speed</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">max_speed </span><span class="s3">* </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y </span><span class="s3">/ </span><span class="s1">speed</span>
+
+    <span class="s0">def </span><span class="s1">update</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s2"># Apply friction</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x </span><span class="s3">*= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">friction</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y </span><span class="s3">*= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">friction</span>
+
+        <span class="s2"># Update position based on speed</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">x </span><span class="s3">+= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">y </span><span class="s3">+= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y</span>
+
+        <span class="s2"># Wrap around map boundaries</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left </span><span class="s3">&gt; </span><span class="s1">screen_width</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">right </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">right </span><span class="s3">&lt; </span><span class="s4">0</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left </span><span class="s3">= </span><span class="s1">screen_width</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top </span><span class="s3">&gt; </span><span class="s1">screen_height</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">bottom </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">bottom </span><span class="s3">&lt; </span><span class="s4">0</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top </span><span class="s3">= </span><span class="s1">screen_height</span>
+
+        <span class="s2"># Output position to terminal</span>
+        <span class="s1">print</span><span class="s3">(</span><span class="s5">f&quot;Spaceship Position: (</span><span class="s0">{</span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">x</span><span class="s0">}</span><span class="s5">, </span><span class="s0">{</span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">y</span><span class="s0">}</span><span class="s5">), Angle: </span><span class="s0">{</span><span class="s1">self</span><span class="s3">.</span><span class="s1">angle</span><span class="s0">}</span><span class="s5">&quot;</span><span class="s3">)</span>
+
+    <span class="s0">def </span><span class="s1">draw</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">screen</span><span class="s3">, </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">offset_y</span><span class="s3">):</span>
+        <span class="s2"># Draw the spaceship adjusted by the viewport offset</span>
+        <span class="s1">screen</span><span class="s3">.</span><span class="s1">blit</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">, (</span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">topleft</span><span class="s3">[</span><span class="s4">0</span><span class="s3">] - </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">topleft</span><span class="s3">[</span><span class="s4">1</span><span class="s3">] - </span><span class="s1">offset_y</span><span class="s3">))</span>
+
+    <span class="s0">def </span><span class="s1">get_mask</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s0">return </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">mask</span><span class="s3">.</span><span class="s1">from_surface</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">)</span>
+
+<span class="s2"># Asteroid class</span>
+<span class="s0">class </span><span class="s1">Asteroid</span><span class="s3">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">, </span><span class="s1">tier</span><span class="s3">=</span><span class="s4">3</span><span class="s3">):</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">tier </span><span class="s3">= </span><span class="s1">tier</span>
+        <span class="s1">size </span><span class="s3">= {</span><span class="s4">3</span><span class="s3">: </span><span class="s4">200</span><span class="s3">, </span><span class="s4">2</span><span class="s3">: </span><span class="s4">80</span><span class="s3">, </span><span class="s4">1</span><span class="s3">: </span><span class="s4">50</span><span class="s3">}[</span><span class="s1">tier</span><span class="s3">]  </span><span class="s2"># Sizes for different tiers</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">image </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">Surface</span><span class="s3">((</span><span class="s1">size</span><span class="s3">, </span><span class="s1">size</span><span class="s3">), </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">SRCALPHA</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">.</span><span class="s1">get_rect</span><span class="s3">(</span><span class="s1">center</span><span class="s3">=(</span><span class="s1">x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">))</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x </span><span class="s3">= </span><span class="s1">random</span><span class="s3">.</span><span class="s1">uniform</span><span class="s3">(-</span><span class="s4">1</span><span class="s3">, </span><span class="s4">1</span><span class="s3">) * (</span><span class="s4">4 </span><span class="s3">- </span><span class="s1">tier</span><span class="s3">)  </span><span class="s2"># Larger asteroids move slower</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y </span><span class="s3">= </span><span class="s1">random</span><span class="s3">.</span><span class="s1">uniform</span><span class="s3">(-</span><span class="s4">1</span><span class="s3">, </span><span class="s4">1</span><span class="s3">) * (</span><span class="s4">4 </span><span class="s3">- </span><span class="s1">tier</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">points </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">create_points</span><span class="s3">(</span><span class="s1">size</span><span class="s3">)</span>
+        <span class="s1">pygame</span><span class="s3">.</span><span class="s1">draw</span><span class="s3">.</span><span class="s1">polygon</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">, (</span><span class="s4">128</span><span class="s3">, </span><span class="s4">128</span><span class="s3">, </span><span class="s4">128</span><span class="s3">), </span><span class="s1">self</span><span class="s3">.</span><span class="s1">points</span><span class="s3">)</span>
+
+    <span class="s0">def </span><span class="s1">create_points</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">size</span><span class="s3">):</span>
+        <span class="s1">points </span><span class="s3">= []</span>
+        <span class="s0">for </span><span class="s1">i </span><span class="s0">in </span><span class="s1">range</span><span class="s3">(</span><span class="s4">8</span><span class="s3">):  </span><span class="s2"># 8 vertices for uneven shape</span>
+            <span class="s1">angle </span><span class="s3">= </span><span class="s1">i </span><span class="s3">* </span><span class="s1">math</span><span class="s3">.</span><span class="s1">pi </span><span class="s3">/ </span><span class="s4">4  </span><span class="s2"># 45 degrees between each point</span>
+            <span class="s1">radius </span><span class="s3">= </span><span class="s1">random</span><span class="s3">.</span><span class="s1">randint</span><span class="s3">(</span><span class="s1">size </span><span class="s3">// </span><span class="s4">2 </span><span class="s3">- </span><span class="s4">10</span><span class="s3">, </span><span class="s1">size </span><span class="s3">// </span><span class="s4">2</span><span class="s3">)</span>
+            <span class="s1">x </span><span class="s3">= </span><span class="s1">size </span><span class="s3">// </span><span class="s4">2 </span><span class="s3">+ </span><span class="s1">radius </span><span class="s3">* </span><span class="s1">math</span><span class="s3">.</span><span class="s1">cos</span><span class="s3">(</span><span class="s1">angle</span><span class="s3">)</span>
+            <span class="s1">y </span><span class="s3">= </span><span class="s1">size </span><span class="s3">// </span><span class="s4">2 </span><span class="s3">+ </span><span class="s1">radius </span><span class="s3">* </span><span class="s1">math</span><span class="s3">.</span><span class="s1">sin</span><span class="s3">(</span><span class="s1">angle</span><span class="s3">)</span>
+            <span class="s1">points</span><span class="s3">.</span><span class="s1">append</span><span class="s3">((</span><span class="s1">x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">))</span>
+        <span class="s0">return </span><span class="s1">points</span>
+
+    <span class="s0">def </span><span class="s1">update</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s2"># Update position based on speed</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">x </span><span class="s3">+= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed_x</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">y </span><span class="s3">+= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed_y</span>
+
+        <span class="s2"># Wrap around map boundaries</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left </span><span class="s3">&gt; </span><span class="s1">screen_width</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">right </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">right </span><span class="s3">&lt; </span><span class="s4">0</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left </span><span class="s3">= </span><span class="s1">screen_width</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top </span><span class="s3">&gt; </span><span class="s1">screen_height</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">bottom </span><span class="s3">= </span><span class="s4">0</span>
+        <span class="s0">elif </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">bottom </span><span class="s3">&lt; </span><span class="s4">0</span><span class="s3">:</span>
+            <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top </span><span class="s3">= </span><span class="s1">screen_height</span>
+
+    <span class="s0">def </span><span class="s1">draw</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">screen</span><span class="s3">, </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">offset_y</span><span class="s3">):</span>
+        <span class="s2"># Draw the asteroid adjusted by the viewport offset</span>
+        <span class="s1">screen</span><span class="s3">.</span><span class="s1">blit</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">, (</span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">topleft</span><span class="s3">[</span><span class="s4">0</span><span class="s3">] - </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">topleft</span><span class="s3">[</span><span class="s4">1</span><span class="s3">] - </span><span class="s1">offset_y</span><span class="s3">))</span>
+
+    <span class="s0">def </span><span class="s1">get_mask</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s0">return </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">mask</span><span class="s3">.</span><span class="s1">from_surface</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">)</span>
+
+    <span class="s0">def </span><span class="s1">break_apart</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s2"># Break into smaller asteroids if not the smallest tier</span>
+        <span class="s0">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">tier </span><span class="s3">&gt; </span><span class="s4">1</span><span class="s3">:</span>
+            <span class="s1">num_new_asteroids </span><span class="s3">= </span><span class="s4">3 </span><span class="s0">if </span><span class="s1">self</span><span class="s3">.</span><span class="s1">tier </span><span class="s3">== </span><span class="s4">2 </span><span class="s0">else </span><span class="s4">2</span>
+            <span class="s1">new_tier </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">tier </span><span class="s3">- </span><span class="s4">1</span>
+            <span class="s0">return </span><span class="s3">[</span><span class="s1">Asteroid</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">centerx</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">centery</span><span class="s3">, </span><span class="s1">new_tier</span><span class="s3">) </span><span class="s0">for </span><span class="s1">_ </span><span class="s0">in </span><span class="s1">range</span><span class="s3">(</span><span class="s1">num_new_asteroids</span><span class="s3">)]</span>
+        <span class="s0">return </span><span class="s3">[]</span>
+
+<span class="s2"># Bullet class</span>
+<span class="s0">class </span><span class="s1">Bullet</span><span class="s3">:</span>
+    <span class="s0">def </span><span class="s1">__init__</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">, </span><span class="s1">angle</span><span class="s3">):</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">image </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">Surface</span><span class="s3">((</span><span class="s4">5</span><span class="s3">, </span><span class="s4">5</span><span class="s3">), </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">SRCALPHA</span><span class="s3">)  </span><span class="s2"># Small bullet</span>
+        <span class="s1">pygame</span><span class="s3">.</span><span class="s1">draw</span><span class="s3">.</span><span class="s1">circle</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">, (</span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">, </span><span class="s4">0</span><span class="s3">), (</span><span class="s4">2</span><span class="s3">, </span><span class="s4">2</span><span class="s3">), </span><span class="s4">2</span><span class="s3">)  </span><span class="s2"># Yellow bullet</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect </span><span class="s3">= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">.</span><span class="s1">get_rect</span><span class="s3">(</span><span class="s1">center</span><span class="s3">=(</span><span class="s1">x</span><span class="s3">, </span><span class="s1">y</span><span class="s3">))</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">angle </span><span class="s3">= </span><span class="s1">angle</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">speed </span><span class="s3">= </span><span class="s4">10  </span><span class="s2"># Speed of the bullet</span>
+
+    <span class="s0">def </span><span class="s1">update</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s1">radians </span><span class="s3">= </span><span class="s1">math</span><span class="s3">.</span><span class="s1">radians</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">angle</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">x </span><span class="s3">+= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed </span><span class="s3">* </span><span class="s1">math</span><span class="s3">.</span><span class="s1">sin</span><span class="s3">(</span><span class="s1">radians</span><span class="s3">)</span>
+        <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">y </span><span class="s3">-= </span><span class="s1">self</span><span class="s3">.</span><span class="s1">speed </span><span class="s3">* </span><span class="s1">math</span><span class="s3">.</span><span class="s1">cos</span><span class="s3">(</span><span class="s1">radians</span><span class="s3">)</span>
+
+    <span class="s0">def </span><span class="s1">draw</span><span class="s3">(</span><span class="s1">self</span><span class="s3">, </span><span class="s1">screen</span><span class="s3">, </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">offset_y</span><span class="s3">):</span>
+        <span class="s2"># Draw the bullet adjusted by the viewport offset</span>
+        <span class="s1">screen</span><span class="s3">.</span><span class="s1">blit</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">, (</span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">topleft</span><span class="s3">[</span><span class="s4">0</span><span class="s3">] - </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">topleft</span><span class="s3">[</span><span class="s4">1</span><span class="s3">] - </span><span class="s1">offset_y</span><span class="s3">))</span>
+
+    <span class="s0">def </span><span class="s1">off_screen</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s2"># Check if the bullet is off-screen</span>
+        <span class="s0">return </span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">right </span><span class="s3">&lt; </span><span class="s4">0 </span><span class="s0">or </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left </span><span class="s3">&gt; </span><span class="s1">screen_width </span><span class="s0">or</span>
+                <span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">bottom </span><span class="s3">&lt; </span><span class="s4">0 </span><span class="s0">or </span><span class="s1">self</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top </span><span class="s3">&gt; </span><span class="s1">screen_height</span><span class="s3">)</span>
+
+    <span class="s0">def </span><span class="s1">get_mask</span><span class="s3">(</span><span class="s1">self</span><span class="s3">):</span>
+        <span class="s0">return </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">mask</span><span class="s3">.</span><span class="s1">from_surface</span><span class="s3">(</span><span class="s1">self</span><span class="s3">.</span><span class="s1">image</span><span class="s3">)</span>
+
+<span class="s2"># Function to draw a dark background with a white grid</span>
+<span class="s0">def </span><span class="s1">draw_background</span><span class="s3">(</span><span class="s1">screen</span><span class="s3">, </span><span class="s1">grid_size</span><span class="s3">=</span><span class="s4">50</span><span class="s3">):</span>
+    <span class="s1">screen</span><span class="s3">.</span><span class="s1">fill</span><span class="s3">((</span><span class="s4">10</span><span class="s3">, </span><span class="s4">10</span><span class="s3">, </span><span class="s4">10</span><span class="s3">))  </span><span class="s2"># Dark background color</span>
+    <span class="s0">for </span><span class="s1">x </span><span class="s0">in </span><span class="s1">range</span><span class="s3">(</span><span class="s4">0</span><span class="s3">, </span><span class="s1">screen_width</span><span class="s3">, </span><span class="s1">grid_size</span><span class="s3">):</span>
+        <span class="s1">pygame</span><span class="s3">.</span><span class="s1">draw</span><span class="s3">.</span><span class="s1">line</span><span class="s3">(</span><span class="s1">screen</span><span class="s3">, (</span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">), (</span><span class="s1">x</span><span class="s3">, </span><span class="s4">0</span><span class="s3">), (</span><span class="s1">x</span><span class="s3">, </span><span class="s1">screen_height</span><span class="s3">))</span>
+    <span class="s0">for </span><span class="s1">y </span><span class="s0">in </span><span class="s1">range</span><span class="s3">(</span><span class="s4">0</span><span class="s3">, </span><span class="s1">screen_height</span><span class="s3">, </span><span class="s1">grid_size</span><span class="s3">):</span>
+        <span class="s1">pygame</span><span class="s3">.</span><span class="s1">draw</span><span class="s3">.</span><span class="s1">line</span><span class="s3">(</span><span class="s1">screen</span><span class="s3">, (</span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">), (</span><span class="s4">0</span><span class="s3">, </span><span class="s1">y</span><span class="s3">), (</span><span class="s1">screen_width</span><span class="s3">, </span><span class="s1">y</span><span class="s3">))</span>
+
+<span class="s2"># Create the spaceship instance</span>
+<span class="s1">spaceship </span><span class="s3">= </span><span class="s1">Spaceship</span><span class="s3">(</span><span class="s1">screen_width </span><span class="s3">// </span><span class="s4">2</span><span class="s3">, </span><span class="s1">screen_height </span><span class="s3">// </span><span class="s4">2</span><span class="s3">)</span>
+
+<span class="s2"># Create a few asteroids</span>
+<span class="s1">asteroids </span><span class="s3">= [</span><span class="s1">Asteroid</span><span class="s3">(</span><span class="s1">random</span><span class="s3">.</span><span class="s1">randint</span><span class="s3">(</span><span class="s4">0</span><span class="s3">, </span><span class="s1">screen_width</span><span class="s3">), </span><span class="s1">random</span><span class="s3">.</span><span class="s1">randint</span><span class="s3">(</span><span class="s4">0</span><span class="s3">, </span><span class="s1">screen_height</span><span class="s3">)) </span><span class="s0">for </span><span class="s1">_ </span><span class="s0">in </span><span class="s1">range</span><span class="s3">(</span><span class="s4">40</span><span class="s3">)]</span>
+
+<span class="s2"># Initialize bullet list</span>
+<span class="s1">bullets </span><span class="s3">= []</span>
+
+<span class="s2"># Initialize the score</span>
+<span class="s1">score </span><span class="s3">= </span><span class="s4">0</span>
+
+<span class="s2"># Bullet cooldown timer</span>
+<span class="s1">last_shot_time </span><span class="s3">= </span><span class="s4">0</span>
+<span class="s1">cooldown_time </span><span class="s3">= </span><span class="s4">100  </span><span class="s2"># Milliseconds between shots</span>
+
+<span class="s2"># Main game loop</span>
+<span class="s1">running </span><span class="s3">= </span><span class="s0">True</span>
+<span class="s0">while </span><span class="s1">running</span><span class="s3">:</span>
+    <span class="s2"># Regulate the game loop speed</span>
+    <span class="s1">clock</span><span class="s3">.</span><span class="s1">tick</span><span class="s3">(</span><span class="s1">FPS</span><span class="s3">)</span>
+
+    <span class="s0">for </span><span class="s1">event </span><span class="s0">in </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">event</span><span class="s3">.</span><span class="s1">get</span><span class="s3">():</span>
+        <span class="s0">if </span><span class="s1">event</span><span class="s3">.</span><span class="s1">type </span><span class="s3">== </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">QUIT</span><span class="s3">:</span>
+            <span class="s1">running </span><span class="s3">= </span><span class="s0">False</span>
+
+    <span class="s1">keys </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">key</span><span class="s3">.</span><span class="s1">get_pressed</span><span class="s3">()</span>
+    <span class="s0">if </span><span class="s1">keys</span><span class="s3">[</span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">K_LEFT</span><span class="s3">]:</span>
+        <span class="s1">spaceship</span><span class="s3">.</span><span class="s1">rotate</span><span class="s3">(</span><span class="s5">&quot;left&quot;</span><span class="s3">)</span>
+    <span class="s0">if </span><span class="s1">keys</span><span class="s3">[</span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">K_RIGHT</span><span class="s3">]:</span>
+        <span class="s1">spaceship</span><span class="s3">.</span><span class="s1">rotate</span><span class="s3">(</span><span class="s5">&quot;right&quot;</span><span class="s3">)</span>
+    <span class="s0">if </span><span class="s1">keys</span><span class="s3">[</span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">K_UP</span><span class="s3">]:</span>
+        <span class="s1">spaceship</span><span class="s3">.</span><span class="s1">accelerate</span><span class="s3">()</span>
+    <span class="s0">if </span><span class="s1">keys</span><span class="s3">[</span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">K_SPACE</span><span class="s3">]:</span>
+        <span class="s1">current_time </span><span class="s3">= </span><span class="s1">pygame</span><span class="s3">.</span><span class="s1">time</span><span class="s3">.</span><span class="s1">get_ticks</span><span class="s3">()</span>
+        <span class="s0">if </span><span class="s1">current_time </span><span class="s3">- </span><span class="s1">last_shot_time </span><span class="s3">&gt; </span><span class="s1">cooldown_time</span><span class="s3">:</span>
+            <span class="s2"># Shoot a bullet out of the front of the spaceship</span>
+            <span class="s1">bullet </span><span class="s3">= </span><span class="s1">Bullet</span><span class="s3">(</span><span class="s1">spaceship</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">centerx</span><span class="s3">, </span><span class="s1">spaceship</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">centery</span><span class="s3">, </span><span class="s1">spaceship</span><span class="s3">.</span><span class="s1">angle</span><span class="s3">)</span>
+            <span class="s1">bullets</span><span class="s3">.</span><span class="s1">append</span><span class="s3">(</span><span class="s1">bullet</span><span class="s3">)</span>
+            <span class="s1">last_shot_time </span><span class="s3">= </span><span class="s1">current_time</span>
+
+    <span class="s2"># Update spaceship position</span>
+    <span class="s1">spaceship</span><span class="s3">.</span><span class="s1">update</span><span class="s3">()</span>
+
+    <span class="s2"># Update bullet positions</span>
+    <span class="s0">for </span><span class="s1">bullet </span><span class="s0">in </span><span class="s1">bullets</span><span class="s3">:</span>
+        <span class="s1">bullet</span><span class="s3">.</span><span class="s1">update</span><span class="s3">()</span>
+
+    <span class="s2"># Remove bullets that are off-screen</span>
+    <span class="s1">bullets </span><span class="s3">= [</span><span class="s1">bullet </span><span class="s0">for </span><span class="s1">bullet </span><span class="s0">in </span><span class="s1">bullets </span><span class="s0">if not </span><span class="s1">bullet</span><span class="s3">.</span><span class="s1">off_screen</span><span class="s3">()]</span>
+
+    <span class="s2"># Update asteroid positions</span>
+    <span class="s0">for </span><span class="s1">asteroid </span><span class="s0">in </span><span class="s1">asteroids</span><span class="s3">:</span>
+        <span class="s1">asteroid</span><span class="s3">.</span><span class="s1">update</span><span class="s3">()</span>
+
+    <span class="s2"># Calculate the viewport offset so the spaceship is centered</span>
+    <span class="s1">offset_x </span><span class="s3">= </span><span class="s1">spaceship</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">centerx </span><span class="s3">- </span><span class="s1">screen</span><span class="s3">.</span><span class="s1">get_width</span><span class="s3">() // </span><span class="s4">2</span>
+    <span class="s1">offset_y </span><span class="s3">= </span><span class="s1">spaceship</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">centery </span><span class="s3">- </span><span class="s1">screen</span><span class="s3">.</span><span class="s1">get_height</span><span class="s3">() // </span><span class="s4">2</span>
+
+    <span class="s2"># Draw the background grid</span>
+    <span class="s1">draw_background</span><span class="s3">(</span><span class="s1">screen</span><span class="s3">)</span>
+
+    <span class="s2"># Draw the spaceship, asteroids, and bullets with offset</span>
+    <span class="s1">spaceship</span><span class="s3">.</span><span class="s1">draw</span><span class="s3">(</span><span class="s1">screen</span><span class="s3">, </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">offset_y</span><span class="s3">)</span>
+    <span class="s0">for </span><span class="s1">asteroid </span><span class="s0">in </span><span class="s1">asteroids</span><span class="s3">:</span>
+        <span class="s1">asteroid</span><span class="s3">.</span><span class="s1">draw</span><span class="s3">(</span><span class="s1">screen</span><span class="s3">, </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">offset_y</span><span class="s3">)</span>
+    <span class="s0">for </span><span class="s1">bullet </span><span class="s0">in </span><span class="s1">bullets</span><span class="s3">:</span>
+        <span class="s1">bullet</span><span class="s3">.</span><span class="s1">draw</span><span class="s3">(</span><span class="s1">screen</span><span class="s3">, </span><span class="s1">offset_x</span><span class="s3">, </span><span class="s1">offset_y</span><span class="s3">)</span>
+
+    <span class="s2"># Check for collisions using masks for pixel-perfect detection</span>
+    <span class="s1">spaceship_mask </span><span class="s3">= </span><span class="s1">spaceship</span><span class="s3">.</span><span class="s1">get_mask</span><span class="s3">()</span>
+
+    <span class="s0">for </span><span class="s1">asteroid </span><span class="s0">in </span><span class="s1">asteroids</span><span class="s3">[:]:</span>
+        <span class="s1">asteroid_mask </span><span class="s3">= </span><span class="s1">asteroid</span><span class="s3">.</span><span class="s1">get_mask</span><span class="s3">()</span>
+        <span class="s1">offset </span><span class="s3">= (</span><span class="s1">asteroid</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left </span><span class="s3">- </span><span class="s1">spaceship</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left</span><span class="s3">, </span><span class="s1">asteroid</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top </span><span class="s3">- </span><span class="s1">spaceship</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top</span><span class="s3">)</span>
+        <span class="s1">collision_point </span><span class="s3">= </span><span class="s1">spaceship_mask</span><span class="s3">.</span><span class="s1">overlap</span><span class="s3">(</span><span class="s1">asteroid_mask</span><span class="s3">, </span><span class="s1">offset</span><span class="s3">)</span>
+
+        <span class="s0">if </span><span class="s1">collision_point</span><span class="s3">:</span>
+            <span class="s1">print</span><span class="s3">(</span><span class="s5">&quot;Collision detected at:&quot;</span><span class="s3">, </span><span class="s1">collision_point</span><span class="s3">)</span>
+            <span class="s1">running </span><span class="s3">= </span><span class="s0">False  </span><span class="s2"># End the game on collision</span>
+
+        <span class="s2"># Check for bullet-asteroid collisions</span>
+        <span class="s0">for </span><span class="s1">bullet </span><span class="s0">in </span><span class="s1">bullets</span><span class="s3">[:]:</span>
+            <span class="s1">bullet_mask </span><span class="s3">= </span><span class="s1">bullet</span><span class="s3">.</span><span class="s1">get_mask</span><span class="s3">()</span>
+            <span class="s1">bullet_offset </span><span class="s3">= (</span><span class="s1">asteroid</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left </span><span class="s3">- </span><span class="s1">bullet</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">left</span><span class="s3">, </span><span class="s1">asteroid</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top </span><span class="s3">- </span><span class="s1">bullet</span><span class="s3">.</span><span class="s1">rect</span><span class="s3">.</span><span class="s1">top</span><span class="s3">)</span>
+            <span class="s1">bullet_collision </span><span class="s3">= </span><span class="s1">bullet_mask</span><span class="s3">.</span><span class="s1">overlap</span><span class="s3">(</span><span class="s1">asteroid_mask</span><span class="s3">, </span><span class="s1">bullet_offset</span><span class="s3">)</span>
+
+            <span class="s0">if </span><span class="s1">bullet_collision</span><span class="s3">:</span>
+                <span class="s1">print</span><span class="s3">(</span><span class="s5">&quot;Bullet hit an asteroid!&quot;</span><span class="s3">)</span>
+                <span class="s1">bullets</span><span class="s3">.</span><span class="s1">remove</span><span class="s3">(</span><span class="s1">bullet</span><span class="s3">)</span>
+                <span class="s1">asteroids</span><span class="s3">.</span><span class="s1">remove</span><span class="s3">(</span><span class="s1">asteroid</span><span class="s3">)</span>
+                <span class="s1">new_asteroids </span><span class="s3">= </span><span class="s1">asteroid</span><span class="s3">.</span><span class="s1">break_apart</span><span class="s3">()</span>
+                <span class="s1">asteroids</span><span class="s3">.</span><span class="s1">extend</span><span class="s3">(</span><span class="s1">new_asteroids</span><span class="s3">)</span>
+                <span class="s0">if </span><span class="s1">asteroid</span><span class="s3">.</span><span class="s1">tier </span><span class="s3">== </span><span class="s4">1</span><span class="s3">:</span>
+                    <span class="s1">score </span><span class="s3">+= </span><span class="s4">1  </span><span class="s2"># Increase score when a tier 1 asteroid is destroyed</span>
+                <span class="s0">break</span>
+
+    <span class="s2"># Draw the score counter</span>
+    <span class="s1">score_text </span><span class="s3">= </span><span class="s1">font</span><span class="s3">.</span><span class="s1">render</span><span class="s3">(</span><span class="s5">f&quot;Score: </span><span class="s0">{</span><span class="s1">score</span><span class="s0">}</span><span class="s5">&quot;</span><span class="s3">, </span><span class="s0">True</span><span class="s3">, (</span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">, </span><span class="s4">255</span><span class="s3">))</span>
+    <span class="s1">screen</span><span class="s3">.</span><span class="s1">blit</span><span class="s3">(</span><span class="s1">score_text</span><span class="s3">, (</span><span class="s4">10</span><span class="s3">, </span><span class="s4">10</span><span class="s3">))</span>
+
+    <span class="s2"># Update the display</span>
+    <span class="s1">pygame</span><span class="s3">.</span><span class="s1">display</span><span class="s3">.</span><span class="s1">flip</span><span class="s3">()</span>
+
+<span class="s1">pygame</span><span class="s3">.</span><span class="s1">quit</span><span class="s3">()</span>
+<span class="s1">sys</span><span class="s3">.</span><span class="s1">exit</span><span class="s3">()</span>
+</pre>
+</body>
+</html>
