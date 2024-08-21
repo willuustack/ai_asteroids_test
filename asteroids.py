@@ -29,9 +29,9 @@ class Spaceship:
         self.angle = 0
         self.speed_x = 0
         self.speed_y = 0
-        self.rotation_speed = 3  #Rotation speed
-        self.acceleration = 0.6  #Acceleration for movement
-        self.max_speed = 5  #Max speed
+        self.rotation_speed = 3  # Rotation speed
+        self.acceleration = 0.6  # Acceleration for movement
+        self.max_speed = 5  # Max speed
         self.friction = 0.99  # Friction to control speed
 
     def rotate(self, direction):
@@ -134,6 +134,29 @@ class Asteroid:
             return [Asteroid(self.rect.centerx, self.rect.centery, new_tier) for _ in range(num_new_asteroids)]
         return []
 
+# Particle effect class for asteroid destruction and spaceship collision
+class Particle:
+    def __init__(self, x, y, color=(200, 200, 200), speed_range=(1, 5), lifetime_range=(20, 40)):
+        self.x = x
+        self.y = y
+        self.angle = random.uniform(0, 2 * math.pi)
+        self.speed = random.uniform(*speed_range)
+        self.lifetime = random.randint(*lifetime_range)
+        self.radius = random.randint(2, 4)
+        self.color = color
+
+    def update(self):
+        self.x += self.speed * math.cos(self.angle)
+        self.y += self.speed * math.sin(self.angle)
+        self.lifetime -= 1
+
+    def draw(self, screen, offset_x, offset_y):
+        if self.lifetime > 0:
+            pygame.draw.circle(screen, self.color, (int(self.x - offset_x), int(self.y - offset_y)), self.radius)
+
+    def is_alive(self):
+        return self.lifetime > 0
+
 # Bullet class
 class Bullet:
     def __init__(self, x, y, angle):
@@ -160,13 +183,39 @@ class Bullet:
     def get_mask(self):
         return pygame.mask.from_surface(self.image)
 
-# Function to draw a dark background with a white grid
-def draw_background(screen, grid_size=50):
-    screen.fill((10, 10, 10))  # Dark background color
-    for x in range(0, screen_width, grid_size):
-        pygame.draw.line(screen, (255, 255, 255), (x, 0), (x, screen_height))
-    for y in range(0, screen_height, grid_size):
-        pygame.draw.line(screen, (255, 255, 255), (0, y), (screen_width, y))
+# Supernova implosion effect for spaceship collision
+class Supernova:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.particles = [Particle(x, y, color=(255, 255, 255), speed_range=(2, 10), lifetime_range=(30, 60)) for _ in range(200)]
+        self.imploding = False
+
+    def update(self):
+        if not self.imploding:
+            for particle in self.particles:
+                particle.update()
+            if all(not particle.is_alive() for particle in self.particles):
+                self.imploding = True
+                self.particles = [Particle(self.x, self.y, color=(255, 255, 255), speed_range=(-2, -10), lifetime_range=(30, 60)) for _ in range(200)]
+        else:
+            for particle in self.particles:
+                particle.update()
+
+    def draw(self, screen, offset_x, offset_y):
+        for particle in self.particles:
+            particle.draw(screen, offset_x, offset_y)
+
+    def is_finished(self):
+        return self.imploding and all(not particle.is_alive() for particle in self.particles)
+
+# Function to draw a dynamic background grid
+def draw_background(screen, grid_offset, grid_size=50):
+    screen.fill((50, 50, 50))  # Background color
+    for x in range(-grid_size, screen_width + grid_size, grid_size):
+        pygame.draw.line(screen, (255, 255, 255), (x + grid_offset[0], 0), (x + grid_offset[0], screen_height))
+    for y in range(-grid_size, screen_height + grid_size, grid_size):
+        pygame.draw.line(screen, (255, 255, 255), (0, y + grid_offset[1]), (screen_width, y + grid_offset[1]))
 
 # Function to display a countdown before respawn
 def display_countdown(screen, countdown):
@@ -187,6 +236,12 @@ asteroids = [Asteroid(random.randint(0, screen_width), random.randint(0, screen_
 # Initialize bullet list
 bullets = []
 
+# Initialize particle list
+particles = []
+
+# Initialize supernova effect list
+supernovas = []
+
 # Initialize the score
 score = 0
 
@@ -201,6 +256,9 @@ cooldown_time = 500  # Milliseconds between shots
 respawn_time = 3000  # 3 seconds
 respawning = False
 respawn_start_time = 0
+
+# Background grid offset
+grid_offset = [0, 0]
 
 # Main game loop
 running = True
@@ -242,20 +300,42 @@ while running:
     for asteroid in asteroids:
         asteroid.update()
 
+    # Update particle positions
+    for particle in particles:
+        particle.update()
+
+    # Remove dead particles
+    particles = [particle for particle in particles if particle.is_alive()]
+
+    # Update supernova positions
+    for supernova in supernovas:
+        supernova.update()
+
+    # Remove finished supernovas
+    supernovas = [supernova for supernova in supernovas if not supernova.is_finished()]
+
     # Calculate the viewport offset so the spaceship is centered
     offset_x = spaceship.rect.centerx - screen.get_width() // 2
     offset_y = spaceship.rect.centery - screen.get_height() // 2
 
-    # Draw the background grid
-    draw_background(screen)
+    # Update grid offset for dynamic background
+    grid_offset[0] = -offset_x // 5  # Slower movement of grid
+    grid_offset[1] = -offset_y // 5
 
-    # Draw the spaceship, asteroids, and bullets with offset
+    # Draw the dynamic background grid
+    draw_background(screen, grid_offset)
+
+    # Draw the spaceship, asteroids, bullets, particles, and supernovas with offset
     if not respawning:
         spaceship.draw(screen, offset_x, offset_y)
     for asteroid in asteroids:
         asteroid.draw(screen, offset_x, offset_y)
     for bullet in bullets:
         bullet.draw(screen, offset_x, offset_y)
+    for particle in particles:
+        particle.draw(screen, offset_x, offset_y)
+    for supernova in supernovas:
+        supernova.draw(screen, offset_x, offset_y)
 
     if not respawning:
         # Check for collisions using masks for pixel-perfect detection
@@ -270,6 +350,7 @@ while running:
                 print("Collision detected at:", collision_point)
                 lives -= 1  # Decrease lives on collision
                 if lives > 0:
+                    supernovas.append(Supernova(spaceship.rect.centerx, spaceship.rect.centery))  # Trigger supernova effect
                     respawning = True
                     respawn_start_time = pygame.time.get_ticks()
                 else:
@@ -289,6 +370,11 @@ while running:
                     asteroids.extend(new_asteroids)
                     if asteroid.tier == 1:
                         score += 1  # Increase score when a tier 1 asteroid is destroyed
+
+                    # Create particle effects at the collision point
+                    for _ in range(30):  # Number of particles
+                        particles.append(Particle(asteroid.rect.centerx, asteroid.rect.centery))
+
                     break
 
     # Respawn logic
